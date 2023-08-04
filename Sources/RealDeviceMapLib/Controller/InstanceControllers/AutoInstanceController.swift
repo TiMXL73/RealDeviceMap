@@ -563,7 +563,12 @@ class AutoInstanceController: InstanceControllerProto {
                     }
 
                     var closest: PokestopWithMode?
-                    let mode = stopsLock.doWithLock { lastMode[username ?? uuid] }
+                    var mode = stopsLock.doWithLock { lastMode[username ?? uuid] }
+                    // TiM-Override. If we are in NORMAL mode = AR group. Never switch!
+                    if (self.questMode == .normal) {
+                        Log.debug(message: "[TiMXL73] [\(name)] [\(uuid)] [modeOverride] force «mode = false» (normal)")
+                        mode = false
+                    }
                     if mode == nil {
                         closest = closestOverall
                     } else if mode == false {
@@ -575,6 +580,7 @@ class AutoInstanceController: InstanceControllerProto {
                     if closest == nil {
                         return [:]
                     }
+                    Log.debug(message: "[TiMXL73] [\(name)] [\(uuid)] [afterClosest] mode[\(mode)] closest[\(closest?.pokestop.lat ?? 0),\(closest?.pokestop.lon ?? 0)]")
                     if (mode == nil || mode == true) && closest!.alternative == false {
                         Log.debug(message:
                             "[AutoInstanceController] [\(username ?? "?")] switching quest mode from " +
@@ -599,6 +605,7 @@ class AutoInstanceController: InstanceControllerProto {
                                 "no AR eligible stop found to scan")
                         }
                     }
+                    Log.debug(message: "[TiMXL73] [\(name)] [\(uuid)] [afterSwitch ] mode[\(mode)] closest[\(closest?.pokestop.lat ?? 0),\(closest?.pokestop.lon ?? 0)]")
 
                     pokestop = closest!
 
@@ -647,6 +654,7 @@ class AutoInstanceController: InstanceControllerProto {
                     return [:]
                 }
 
+                Log.debug(message: "[TiMXL73] [\(name)] [\(uuid)] [cooldown] delay[\(delay)] delayLogout[\(delayLogout)] todayStops[\(todayStops?.count ?? 0)]")
                 if delay >= delayLogout && account != nil {
                     stopsLock.lock()
                     todayStops?.append(pokestop)
@@ -666,7 +674,7 @@ class AutoInstanceController: InstanceControllerProto {
                                 newUsername = account?.username
                                 accounts[uuid] = newUsername
                                 Log.debug(
-                                    message: "[AutoInstanceController] [\(name)] [\(uuid)] Over Logout Delay. " +
+                                    message: "[AutoInstanceController] [\(name)] [\(uuid)] Over Logout Delay [\(delay)]. " +
                                             "Switching Account from \(username ?? "?") to \(newUsername ?? "?")"
                                 )
                             }
@@ -763,6 +771,7 @@ class AutoInstanceController: InstanceControllerProto {
                 stopsLock.doWithLock { lastMode[username ?? uuid] = pokestop.alternative }
                 WebHookRequestHandler.setArQuestTarget(device: uuid, timestamp: timestamp,
                     isAr: pokestop.alternative)
+                Log.debug(message: "[TiMXL73] [\(name)] [\(uuid)] [scan_quest] todayStops[\(todayStops?.count ?? 0)] coord[\(pokestop.pokestop.lat),\(pokestop.pokestop.lon)]")
                 return ["action": "scan_quest", "deploy_egg": false,
                         "lat": pokestop.pokestop.lat, "lon": pokestop.pokestop.lon,
                         "delay": delay, "min_level": minLevel, "max_level": maxLevel,
